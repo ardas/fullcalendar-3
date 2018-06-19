@@ -1,9 +1,11 @@
 import * as $ from 'jquery'
+import * as moment from 'moment'
 import { disableCursor, enableCursor } from '../../util'
 import EventDefMutation from '../../models/event/EventDefMutation'
 import EventDefDateMutation from '../../models/event/EventDefDateMutation'
 import HitDragListener from '../../common/HitDragListener'
 import Interaction from './Interaction'
+
 
 
 export default class EventResizing extends Interaction {
@@ -98,7 +100,7 @@ export default class EventResizing extends Interaction {
         if (origHitFootprint && hitFootprint) {
           resizeMutation = isStart ?
             this.computeEventStartResizeMutation(origHitFootprint, hitFootprint, seg.footprint) :
-            this.computeEventEndResizeMutation(origHitFootprint, hitFootprint, seg.footprint)
+            this.computeEventEndResizeMutation(origHitFootprint, hitFootprint, seg.footprint, seg.resizeOptions)
 
           if (resizeMutation) {
             mutatedEventInstanceGroup = eventManager.buildMutatedEventInstanceGroup(
@@ -160,7 +162,7 @@ export default class EventResizing extends Interaction {
   // Called before event segment resizing starts
   segResizeStart(seg, ev) {
     this.isResizing = true
-    this.component.publiclyTrigger('eventResizeStart', {
+    seg.resizeOptions = this.component.publiclyTrigger('eventResizeStart', {
       context: seg.el[0],
       args: [
         seg.footprint.getEventLegacy(),
@@ -168,7 +170,7 @@ export default class EventResizing extends Interaction {
         {}, // jqui dummy
         this.view
       ]
-    })
+    }) || {}
   }
 
 
@@ -198,7 +200,6 @@ export default class EventResizing extends Interaction {
     let eventDefMutation
 
     if (origRange.getStart().add(startDelta) < origRange.getEnd()) {
-
       dateMutation = new EventDefDateMutation()
       dateMutation.setStartDelta(startDelta)
 
@@ -213,27 +214,41 @@ export default class EventResizing extends Interaction {
 
 
   // Returns new date-information for an event segment being resized from its end
-  computeEventEndResizeMutation(startFootprint, endFootprint, origEventFootprint) {
+  computeEventEndResizeMutation(startFootprint, endFootprint, origEventFootprint, options) {
     let origRange = origEventFootprint.componentFootprint.unzonedRange
     let endDelta = this.component.diffDates(
       endFootprint.unzonedRange.getEnd(),
       startFootprint.unzonedRange.getEnd()
     )
-    let dateMutation
-    let eventDefMutation
+    let dateMutation = new EventDefDateMutation()
+    let eventDefMutation = new EventDefMutation()
 
-    if (origRange.getEnd().add(endDelta) > origRange.getStart()) {
 
-      dateMutation = new EventDefDateMutation()
+    if (origRange.getEnd().clone().add(endDelta) > origRange.getStart()) {
+      //maxEventDuration rule
+      if (options.maxEventDuration && endDelta >= moment.duration(options.maxEventDuration)) {
+        dateMutation.setEndDelta(moment.duration(options.maxEventDuration))
+        eventDefMutation.setDateMutation(dateMutation)
+        return eventDefMutation
+      }
+      //if there is no maxEventDuration in options, default behavior
       dateMutation.setEndDelta(endDelta)
-
-      eventDefMutation = new EventDefMutation()
       eventDefMutation.setDateMutation(dateMutation)
-
       return eventDefMutation
     }
+    //minEventDuration rule
+    if(options.minEventDuration && origRange.getStart().add(endDelta) < origRange.getStart()) {
+        dateMutation.setEndDelta(
+          this.component.diffDates(
+            origRange.getStart(),
+            origRange.getEnd()
+          )
+          .add(options.minEventDuration)
+        )
+        eventDefMutation.setDateMutation(dateMutation)
+        return eventDefMutation
+      }
 
     return false
   }
-
 }
