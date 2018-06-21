@@ -10568,6 +10568,12 @@ var ExternalDropping = /** @class */ (function (_super) {
                 var mutatedEventInstanceGroup;
                 if (hitFootprint) {
                     singleEventDef = _this.computeExternalDrop(hitFootprint, meta);
+                    _this.view.publiclyTrigger('drag', {
+                        context: _this,
+                        args: [
+                            el, hitFootprint, ev, ui, _this
+                        ]
+                    });
                     if (singleEventDef) {
                         mutatedEventInstanceGroup = new EventInstanceGroup_1.default(singleEventDef.buildInstances());
                         isAllowed = meta.eventProps ? // isEvent?

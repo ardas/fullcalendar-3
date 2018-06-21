@@ -86,9 +86,14 @@ export default class ExternalDropping extends Interaction {
         let isAllowed = true
         let hitFootprint = hit.component.getSafeHitFootprint(hit) // hit might not belong to this grid
         let mutatedEventInstanceGroup
-
         if (hitFootprint) {
           singleEventDef = this.computeExternalDrop(hitFootprint, meta)
+          this.view.publiclyTrigger('drag', {
+            context: this,
+            args: [
+              el, hitFootprint, ev, ui, this
+            ]
+          })
 
           if (singleEventDef) {
             mutatedEventInstanceGroup = new EventInstanceGroup(
