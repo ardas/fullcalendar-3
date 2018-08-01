@@ -88,7 +88,7 @@ export default class ExternalDropping extends Interaction {
         let mutatedEventInstanceGroup
         if (hitFootprint) {
           singleEventDef = this.computeExternalDrop(hitFootprint, meta)
-          this.view.publiclyTrigger('drag', {
+          this.view.publiclyTrigger('externalDrag', {
             context: this,
             args: [
               el, hitFootprint, ev, ui, this
