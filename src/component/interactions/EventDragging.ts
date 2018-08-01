@@ -166,6 +166,17 @@ export default class EventDragging extends Interaction {
         this.segDragStart(seg, ev)
         view.hideEventsWithId(seg.footprint.eventDef.id)
       },
+      drag: (dx, dy, ev) => {
+        view.publiclyTrigger('eventDrag', {
+          context: this,
+          args: [
+            seg.footprint.getEventLegacy(),
+            ev,
+            {}, // jqui dummy
+            this.view
+          ]
+        })
+      },
       hitOver: (hit, isOrig, origHit) => {
         let isAllowed = true
         let origFootprint
@@ -234,14 +245,26 @@ export default class EventDragging extends Interaction {
       interactionEnd: (ev) => {
         delete seg.component // prevent side effects
 
+        var { successfulExternalDrop } = (view.publiclyTrigger('eventDragInteractionEnd', {
+          context: this,
+          args: [
+            seg.footprint.getEventLegacy(),
+            ev,
+            {}, // jqui dummy
+            this.view
+          ]
+        }) || {successfulExternalDrop: false})
+
         // do revert animation if hasn't changed. calls a callback when finished (whether animation or not)
-        mouseFollower.stop(!eventDefMutation, () => {
+        mouseFollower.stop(!eventDefMutation && !successfulExternalDrop, () => {
           if (isDragging) {
             view.unrenderDrag(seg)
             this.segDragStop(seg, ev)
           }
 
-          view.showEventsWithId(seg.footprint.eventDef.id)
+          if (!successfulExternalDrop) {
+            view.showEventsWithId(seg.footprint.eventDef.id)
+          }
 
           if (eventDefMutation) {
             // no need to re-show original, will rerender all anyways. esp important if eventRenderWait

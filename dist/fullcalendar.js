@@ -10568,7 +10568,7 @@ var ExternalDropping = /** @class */ (function (_super) {
                 var mutatedEventInstanceGroup;
                 if (hitFootprint) {
                     singleEventDef = _this.computeExternalDrop(hitFootprint, meta);
-                    _this.view.publiclyTrigger('drag', {
+                    _this.view.publiclyTrigger('externalDrag', {
                         context: _this,
                         args: [
                             el, hitFootprint, ev, ui, _this
@@ -11055,6 +11055,17 @@ var EventDragging = /** @class */ (function (_super) {
                 _this.segDragStart(seg, ev);
                 view.hideEventsWithId(seg.footprint.eventDef.id);
             },
+            drag: function (dx, dy, ev) {
+                view.publiclyTrigger('eventDrag', {
+                    context: _this,
+                    args: [
+                        seg.footprint.getEventLegacy(),
+                        ev,
+                        {},
+                        _this.view
+                    ]
+                });
+            },
             hitOver: function (hit, isOrig, origHit) {
                 var isAllowed = true;
                 var origFootprint;
@@ -11108,13 +11119,24 @@ var EventDragging = /** @class */ (function (_super) {
             },
             interactionEnd: function (ev) {
                 delete seg.component; // prevent side effects
+                var successfulExternalDrop = (view.publiclyTrigger('eventDragInteractionEnd', {
+                    context: _this,
+                    args: [
+                        seg.footprint.getEventLegacy(),
+                        ev,
+                        {},
+                        _this.view
+                    ]
+                }) || { successfulExternalDrop: false }).successfulExternalDrop;
                 // do revert animation if hasn't changed. calls a callback when finished (whether animation or not)
-                mouseFollower.stop(!eventDefMutation, function () {
+                mouseFollower.stop(!eventDefMutation && !successfulExternalDrop, function () {
                     if (isDragging) {
                         view.unrenderDrag(seg);
                         _this.segDragStop(seg, ev);
                     }
-                    view.showEventsWithId(seg.footprint.eventDef.id);
+                    if (!successfulExternalDrop) {
+                        view.showEventsWithId(seg.footprint.eventDef.id);
+                    }
                     if (eventDefMutation) {
                         // no need to re-show original, will rerender all anyways. esp important if eventRenderWait
                         view.reportEventDrop(eventInstance, eventDefMutation, el, ev);
